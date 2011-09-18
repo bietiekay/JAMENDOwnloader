@@ -128,6 +128,18 @@ namespace JAMENDOwnloader
                     }
                     #endregion
 
+                    #region Get Album-Art
+                    String AlbumArtPath = AlbumPath+Path.DirectorySeparatorChar+"cover.jpg";
+
+                    if (!File.Exists(AlbumArtPath))
+                    {
+                        String AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 2) + "/" + _album.id + "/covers/1.400.jpg";
+                        WebClient webClient = new WebClient();
+                        webClient.DownloadFile(AlbumArt, AlbumArtPath);
+                        Console.WriteLine("           \\ - Cover");
+                    }
+                    #endregion                    
+
                     long AlbumTracks = 0;
 
                     foreach (JamendoDataArtistsArtistAlbumsAlbumTracksTrack _track in _album.Tracks)
@@ -141,8 +153,6 @@ namespace JAMENDOwnloader
                         else
                             TrackNumber = "" + AlbumTracks;
 
-
-                        Console.WriteLine("           \\ - " + _track.name+", "+_track.duration+", "+_track.id3genre);
                         String TrackPath = AlbumPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(TrackNumber + " - " + _track.name) + DownloadType;
 
                         #region handle track metadata
@@ -151,6 +161,7 @@ namespace JAMENDOwnloader
                         #region Download if not existing
                         if (!File.Exists(TrackPath))
                         {
+                            Console.WriteLine("           \\ - " + _track.name + ", " + _track.duration + ", " + _track.id3genre);
                             WebClient webClient = new WebClient();
                             webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding="+JamendoDownloadType, TrackPath);
                         }
