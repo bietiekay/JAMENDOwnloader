@@ -11,7 +11,8 @@
     <RootNamespace>JAMENDOwnloader</RootNamespace>
     <AssemblyName>JAMENDOwnloader</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
@@ -51,16 +52,11 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="XML\catalog.xsc">
-      <DependentUpon>catalog.xsd</DependentUpon>
-    </None>
+    <None Include="app.config" />
     <None Include="XML\catalog.xsd">
       <Generator>MSDataSetGenerator</Generator>
       <LastGenOutput>catalog.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
-    </None>
-    <None Include="XML\catalog.xss">
-      <DependentUpon>catalog.xsd</DependentUpon>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

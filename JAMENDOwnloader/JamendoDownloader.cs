@@ -43,8 +43,9 @@ using System.Net;
 
 namespace JAMENDOwnloader
 {
-    class JamendoDownloader
+    public class JamendoDownloader
     {
+
         static void Main(string[] args)
         {
             Console.WriteLine("JAMENDOwnloader 1.0");
