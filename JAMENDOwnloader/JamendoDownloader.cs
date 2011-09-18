@@ -63,12 +63,13 @@ namespace JAMENDOwnloader
                 return;
             }
 
-
             #region Parse the XML
             Console.Write("Parsing XML Data...");
-            TextReader reader = new StreamReader(args[1]);
+            
+            TextReader reader = new StreamReader(args[1]);            
             XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
+            
             Console.WriteLine("done!");
             Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
             #endregion
@@ -127,10 +128,22 @@ namespace JAMENDOwnloader
                     }
                     #endregion
 
+                    long AlbumTracks = 0;
+
                     foreach (JamendoDataArtistsArtistAlbumsAlbumTracksTrack _track in _album.Tracks)
                     {
-                        Console.WriteLine("           \\ - " + _track.name);
-                        String TrackPath = AlbumPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_track.name)+DownloadType;
+                        AlbumTracks++;
+
+                        String TrackNumber = "";
+
+                        if (AlbumTracks < 10)
+                            TrackNumber = "0" + AlbumTracks;
+                        else
+                            TrackNumber = "" + AlbumTracks;
+
+
+                        Console.WriteLine("           \\ - " + _track.name+", "+_track.duration+", "+_track.id3genre);
+                        String TrackPath = AlbumPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(TrackNumber + " - " + _track.name) + DownloadType;
 
                         #region handle track metadata
                         #endregion
