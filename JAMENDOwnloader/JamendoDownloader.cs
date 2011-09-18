@@ -39,6 +39,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using System.IO;
 using JAMENDOwnloader.XML;
+using System.Net;
 
 namespace JAMENDOwnloader
 {
@@ -46,17 +47,92 @@ namespace JAMENDOwnloader
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("JAMENDOwnloader");
+            Console.WriteLine("JAMENDOwnloader 1.0");
             Console.WriteLine("Copyright (c) 2011 Daniel Kirstenpfad - http://www.technology-ninja.com");
+            Console.WriteLine();
+            if (args.Length < 2)
+            {
+                Console.WriteLine("You need to specify more parameters:");
+                Console.WriteLine();
+                Console.WriteLine("  JAMENDOwnloader <download-type> <directory>");
+                Console.WriteLine();
+                Console.WriteLine("  allowed download-types: mp3, ogg");
+                return;
+            }
 
+
+            #region Parse the XML
             Console.Write("Parsing XML Data...");
-
             TextReader reader = new StreamReader("catalog.xml");
             XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
-
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
-
             Console.WriteLine("done!");
+            Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
+            #endregion
+
+            String DownloadPath = "C:\\Jamendo";
+            String DownloadType = ".mp3";
+            String JamendoDownloadType = "mp31";
+            long DownloadedArtists = 0;
+            long DownloadedAlbums = 0;
+            long DownloadedTracks = 0;
+
+            #region Now iterate through all artists, albums and tracks and find out which ones should be downloaded
+
+            foreach (JamendoDataArtistsArtist _artist in xmldata.Artists)
+            {
+                Console.WriteLine(" \\- "+_artist.name);
+
+                String ArtistPath = DownloadPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_artist.name);
+
+                #region handle artist metadata
+                #endregion
+
+                #region eventually create artist directory
+                if (!Directory.Exists(ArtistPath))
+                {
+                    Directory.CreateDirectory(ArtistPath);
+                }
+                #endregion
+
+                foreach (JamendoDataArtistsArtistAlbumsAlbum _album in _artist.Albums)
+                {
+                    Console.WriteLine("     \\ - "+_album.name);
+                    String AlbumPath = ArtistPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_album.name);
+
+                    #region handle album metadata
+                    #endregion
+
+                    #region eventually create album directory
+                    if (!Directory.Exists(AlbumPath))
+                    {
+                        Directory.CreateDirectory(AlbumPath);
+                    }
+                    #endregion
+
+                    foreach (JamendoDataArtistsArtistAlbumsAlbumTracksTrack _track in _album.Tracks)
+                    {
+                        Console.WriteLine("           \\ - " + _track.name);
+                        String TrackPath = AlbumPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_track.name)+DownloadType;
+
+                        #region handle track metadata
+                        #endregion
+
+                        #region Download if not existing
+                        if (!File.Exists(TrackPath))
+                        {
+                            WebClient webClient = new WebClient();
+                            webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding="+JamendoDownloadType, TrackPath);
+                        }
+                        #endregion
+                        DownloadedTracks++;
+                    }
+                    DownloadedAlbums++;
+                }
+                DownloadedArtists++;
+            }
+            #endregion
+
         }
     }
 }
