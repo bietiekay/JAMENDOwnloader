@@ -135,6 +135,9 @@ namespace JAMENDOwnloader
                     if (!File.Exists(AlbumArtPath))
                     {
                         String AlbumArt ="";
+                        if (_album.id.Length == 3)
+                            AlbumArt = "http://imgjam.com/albums/s0/" + _album.id + "/covers/1.400.jpg";
+
                         if (_album.id.Length == 4)
                             AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 1) + "/" + _album.id + "/covers/1.400.jpg";
 
