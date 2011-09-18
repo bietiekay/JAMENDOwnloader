@@ -45,7 +45,6 @@ namespace JAMENDOwnloader
 {
     public class JamendoDownloader
     {
-
         static void Main(string[] args)
         {
             Console.WriteLine("JAMENDOwnloader 1.0");
@@ -55,19 +54,20 @@ namespace JAMENDOwnloader
             {
                 Console.WriteLine("You need to specify more parameters:");
                 Console.WriteLine();
-                Console.WriteLine("  JAMENDOwnloader <download-type> <catalog-xml-file> <directory>");
+                Console.WriteLine("  JAMENDOwnloader <download-type> <numberofdownloadthreads> <catalog-xml-file> <directory>");
                 Console.WriteLine();
                 Console.WriteLine("  allowed download-types: mp3, ogg");
                 Console.WriteLine();
                 Console.WriteLine("Example:");
-                Console.WriteLine(" JAMENDOwnloader mp3 catalog.xml Jamendo");
+                Console.WriteLine(" JAMENDOwnloader mp3 4 catalog.xml Jamendo");
                 return;
             }
 
             #region Parse the XML
             Console.Write("Parsing XML Data...");
-            
-            TextReader reader = new StreamReader(args[1]);            
+
+            ParallelDownloader pDownloader = new ParallelDownloader(Convert.ToByte(args[1]));
+            TextReader reader = new StreamReader(args[2]);            
             XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
             
@@ -75,13 +75,13 @@ namespace JAMENDOwnloader
             Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
             #endregion
 
-            if (!Directory.Exists(args[2]))
+            if (!Directory.Exists(args[3]))
             {
                 Console.WriteLine("Output directory does not exists!");
                 return;
             }
 
-            String DownloadPath = args[2];
+            String DownloadPath = args[3];
 
             String DownloadType = ".mp3";
             String JamendoDownloadType = "mp31";
@@ -142,8 +142,9 @@ namespace JAMENDOwnloader
                             AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 2) + "/" + _album.id + "/covers/1.400.jpg";
                         try
                         {
-                            WebClient webClient = new WebClient();
-                            webClient.DownloadFile(AlbumArt, AlbumArtPath);
+                            //WebClient webClient = new WebClient();
+                            //webClient.DownloadFile(AlbumArt, AlbumArtPath);
+                            pDownloader.AddToQueue(AlbumArt, AlbumArtPath);
                             Console.WriteLine("           \\ - Cover");
                         }
                         catch (Exception e)
@@ -179,8 +180,9 @@ namespace JAMENDOwnloader
                             try
                             {
                                 Console.WriteLine("           \\ - " + _track.name + ", " + _track.duration + ", " + _track.id3genre);
-                                WebClient webClient = new WebClient();
-                                webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
+                                //WebClient webClient = new WebClient();
+                                //webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
+                                pDownloader.AddToQueue("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
                             }
                             catch (Exception e)
                             {

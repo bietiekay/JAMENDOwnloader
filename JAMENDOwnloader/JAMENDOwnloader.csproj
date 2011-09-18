@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="JamendoDownloader.cs" />
+    <Compile Include="ParallelDownloader.cs" />
     <Compile Include="PathFilenameHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="XML\catalog.cs">
