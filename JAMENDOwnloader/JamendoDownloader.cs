@@ -133,10 +133,24 @@ namespace JAMENDOwnloader
 
                     if (!File.Exists(AlbumArtPath))
                     {
-                        String AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 2) + "/" + _album.id + "/covers/1.400.jpg";
-                        WebClient webClient = new WebClient();
-                        webClient.DownloadFile(AlbumArt, AlbumArtPath);
-                        Console.WriteLine("           \\ - Cover");
+                        String AlbumArt ="";
+                        if (_album.id.Length == 4)
+                            AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 1) + "/" + _album.id + "/covers/1.400.jpg";
+
+                        if (_album.id.Length == 5)
+                            AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 2) + "/" + _album.id + "/covers/1.400.jpg";
+                        try
+                        {
+                            WebClient webClient = new WebClient();
+                            webClient.DownloadFile(AlbumArt, AlbumArtPath);
+                            Console.WriteLine("           \\ - Cover");
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("URL:" +AlbumArt);
+                            Console.WriteLine(e.Message);
+                        }
+                        
                     }
                     #endregion                    
 
@@ -161,9 +175,18 @@ namespace JAMENDOwnloader
                         #region Download if not existing
                         if (!File.Exists(TrackPath))
                         {
-                            Console.WriteLine("           \\ - " + _track.name + ", " + _track.duration + ", " + _track.id3genre);
-                            WebClient webClient = new WebClient();
-                            webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding="+JamendoDownloadType, TrackPath);
+                            try
+                            {
+                                Console.WriteLine("           \\ - " + _track.name + ", " + _track.duration + ", " + _track.id3genre);
+                                WebClient webClient = new WebClient();
+                                webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("URL:" + "http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType);
+                                Console.WriteLine(e.Message);
+                            }
+
                         }
                         #endregion
                         DownloadedTracks++;
