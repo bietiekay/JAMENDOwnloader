@@ -1,0 +1,10 @@
+CREATE VERTEX TYPE City (String Name)
+CREATE VERTEX TYPE State (String Name)
+CREATE VERTEX TYPE Country (String Name)
+CREATE VERTEX TYPE Location (Double longitude, Double Latitude, Country Country, State State, City City)
+
+CREATE VERTEX TYPE Genre(String GenreName)
+
+CREATE VERTEX TYPE Album (String Name, Int64 ID
+
+CREATE VERTEX TYPE Artist (String Name, Int64 ID, String URL, String ImageURL, SET<Album> Albums)
