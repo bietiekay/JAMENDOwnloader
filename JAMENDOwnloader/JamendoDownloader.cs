@@ -50,29 +50,46 @@ namespace JAMENDOwnloader
             Console.WriteLine("JAMENDOwnloader 1.0");
             Console.WriteLine("Copyright (c) 2011 Daniel Kirstenpfad - http://www.technology-ninja.com");
             Console.WriteLine();
-            if (args.Length < 2)
+            if (args.Length < 3)
             {
                 Console.WriteLine("You need to specify more parameters:");
                 Console.WriteLine();
-                Console.WriteLine("  JAMENDOwnloader <download-type> <directory>");
+                Console.WriteLine("  JAMENDOwnloader <download-type> <catalog-xml-file> <directory>");
                 Console.WriteLine();
                 Console.WriteLine("  allowed download-types: mp3, ogg");
+                Console.WriteLine();
+                Console.WriteLine("Example:");
+                Console.WriteLine(" JAMENDOwnloader mp3 catalog.xml Jamendo");
                 return;
             }
 
 
             #region Parse the XML
             Console.Write("Parsing XML Data...");
-            TextReader reader = new StreamReader("catalog.xml");
+            TextReader reader = new StreamReader(args[1]);
             XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
             Console.WriteLine("done!");
             Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
             #endregion
 
-            String DownloadPath = "C:\\Jamendo";
+            if (!Directory.Exists(args[2]))
+            {
+                Console.WriteLine("Output directory does not exists!");
+                return;
+            }
+
+            String DownloadPath = args[2];
+
             String DownloadType = ".mp3";
             String JamendoDownloadType = "mp31";
+
+            if (args[0].ToUpper() == "OGG")
+            {
+                DownloadType = ".ogg";
+                JamendoDownloadType = "ogg2";
+            }
+
             long DownloadedArtists = 0;
             long DownloadedAlbums = 0;
             long DownloadedTracks = 0;
