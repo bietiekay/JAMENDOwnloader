@@ -46,6 +46,7 @@ namespace JAMENDOwnloader
 {
     public class JamendoDownloader
     {
+        #region Help Text
         static void DisplayHelpText()
         {
             Console.WriteLine("You need to specify more parameters:");
@@ -53,7 +54,7 @@ namespace JAMENDOwnloader
             Console.WriteLine("JAMENDOwnloader </type:<mp3|ogg>> [/threads:2] </input:<catalog-xml-file>> </output:<directory>> [options]");
             Console.WriteLine();
             Console.WriteLine("there are some optional parameters available:");
-            Console.WriteLine(" /coversize:<200-600> - the desired size of cover-art");
+            Console.WriteLine(" /coversize:<200-600> -   the desired size of cover-art, Default: 400");
             Console.WriteLine(" /donotdownload       -   this will not download anything but only output a GraphQL script.");
             Console.WriteLine(" /?                   -   displays this help text");
             Console.WriteLine();
@@ -62,6 +63,7 @@ namespace JAMENDOwnloader
             Console.WriteLine("This will use catalog.xml in the same folder to download mp3-formatted tracks and output it");
             Console.WriteLine("into the ./Jamendo folder");
         }
+        #endregion
 
         static void Main(string[] args)
         {
@@ -77,6 +79,7 @@ namespace JAMENDOwnloader
             String DownloadType = ".mp3";
             String JamendoDownloadType = "mp31";
             Int32 CoverSize = 400;
+
             #region Parameter handling
 
             #region /?
@@ -155,15 +158,18 @@ namespace JAMENDOwnloader
 
             #endregion
 
+            #region Initialize
+            ParallelDownloader pDownloader = new ParallelDownloader(NumberOfThreads);
+            TextReader reader = new StreamReader(CatalogFile);
+            XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
+            JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
+            TextWriter graphQLOutputFile = new StreamWriter(DownloadPath + "\\jamendo.gql", false);
 
+            #endregion
 
             #region Parse the XML
             Console.Write("Parsing XML Data...");
-            ParallelDownloader pDownloader = new ParallelDownloader(NumberOfThreads);
-            TextReader reader = new StreamReader(CatalogFile);            
-            XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
-            JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
-            
+
             Console.WriteLine("done!");
             Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
             #endregion
@@ -174,13 +180,26 @@ namespace JAMENDOwnloader
 
             #region Now iterate through all artists, albums and tracks and find out which ones should be downloaded
 
+            #region GraphQL scheme
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE City ATTRIBUTES (String Name)");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE State ATTRIBUTES (String Name)");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Country ATTRIBUTES (String Name)");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Location ATTRIBUTES (Double Longitude, Double Latitude, Country Country, State State, City City)");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Genre ATTRIBUTES (String GenreName)");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Album ATTRIBUTES (String Name, Int64 ID");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Artist ATTRIBUTES (String Name, Int64 ID, String URL, String ImageURL, SET<Album> Albums)");
+            #endregion
+
             foreach (JamendoDataArtistsArtist _artist in xmldata.Artists)
             {
-                Console.WriteLine(" \\- "+_artist.name);
+                Console.WriteLine(" \\- " + PathValidation.CleanFileName(_artist.name));
 
                 String ArtistPath = DownloadPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_artist.name);
 
                 #region handle artist metadata
+
+                graphQLOutputFile.WriteLine("INSERT INTO Artist VALUES(Name='" + _artist.name.Replace("'","\\'") + "',ID=" + _artist.id + ",URL='" + _artist.url + "', ImageURL='" + _artist.image+"')");
+
                 #endregion
 
                 #region eventually create artist directory
@@ -193,7 +212,7 @@ namespace JAMENDOwnloader
 
                 foreach (JamendoDataArtistsArtistAlbumsAlbum _album in _artist.Albums)
                 {
-                    Console.WriteLine("     \\ - "+_album.name);
+                    Console.WriteLine("     \\ - " + PathValidation.CleanFileName(_album.name));
                     String AlbumPath = ArtistPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_album.name);
 
                     #region handle album metadata
@@ -265,7 +284,7 @@ namespace JAMENDOwnloader
                         {
                             try
                             {
-                                Console.WriteLine("           \\ - " + _track.name + ", " + _track.duration + ", " + _track.id3genre);
+                                Console.WriteLine("           \\ - " + PathValidation.CleanFileName(_track.name) + ", " + _track.duration + ", " + _track.id3genre);
                                 //WebClient webClient = new WebClient();
                                 //webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
                                 if (!DoNotDownload)
@@ -287,6 +306,8 @@ namespace JAMENDOwnloader
             }
             #endregion
 
+            graphQLOutputFile.Flush();
+            graphQLOutputFile.Close();
         }
     }
 }
