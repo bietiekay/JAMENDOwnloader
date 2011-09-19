@@ -186,7 +186,7 @@ namespace JAMENDOwnloader
             graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Country ATTRIBUTES (String Name)");
             graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Location ATTRIBUTES (Double Longitude, Double Latitude, Country Country, State State, City City)");
             graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Genre ATTRIBUTES (String GenreName)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Album ATTRIBUTES (String Name, Int64 ID");
+            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Album ATTRIBUTES (String Name, Int64 ID)");
             graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Artist ATTRIBUTES (String Name, Int64 ID, String URL, String ImageURL, SET<Album> Albums)");
             #endregion
 
@@ -197,8 +197,22 @@ namespace JAMENDOwnloader
                 String ArtistPath = DownloadPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_artist.name);
 
                 #region handle artist metadata
+                String ArtistName = "";
+                String ArtistURL = "";
+                String ArtistImage = "";
 
-                graphQLOutputFile.WriteLine("INSERT INTO Artist VALUES(Name='" + _artist.name.Replace("'","\\'") + "',ID=" + _artist.id + ",URL='" + _artist.url + "', ImageURL='" + _artist.image+"')");
+
+                if (_artist.name != null)
+                    ArtistName = _artist.name.Replace("'", "\\'");
+
+                if (_artist.url != null)
+                    ArtistURL = _artist.url.Replace("'", "\\'");
+
+                if (_artist.image != null)
+                    ArtistImage = _artist.image.Replace("'", "\\'");
+
+
+                graphQLOutputFile.WriteLine("INSERT INTO Artist VALUES(Name='" + ArtistName + "',ID=" + _artist.id + ",URL='" + ArtistURL + "', ImageURL='" + ArtistImage + "')");
 
                 #endregion
 
