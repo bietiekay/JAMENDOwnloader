@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Arguments\Arguments.cs" />
     <Compile Include="JamendoDownloader.cs" />
     <Compile Include="ParallelDownloader.cs" />
     <Compile Include="PathFilenameHelper.cs" />
@@ -59,6 +60,9 @@
       <LastGenOutput>catalog.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Arguments\argument-license.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

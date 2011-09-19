@@ -4,6 +4,6 @@
     <ProjectView>ProjectFiles</ProjectView>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <StartArguments>mp3 1 catalog.xml Jamendo</StartArguments>
+    <StartArguments>/type:mp3 /threads:1 /input:catalog.xml /output:Jamendo /donotdownload</StartArguments>
   </PropertyGroup>
 </Project>

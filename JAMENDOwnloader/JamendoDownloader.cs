@@ -40,57 +40,129 @@ using System.Xml.Serialization;
 using System.IO;
 using JAMENDOwnloader.XML;
 using System.Net;
+using CommandLine.Utility;
 
 namespace JAMENDOwnloader
 {
     public class JamendoDownloader
     {
+        static void DisplayHelpText()
+        {
+            Console.WriteLine("You need to specify more parameters:");
+            Console.WriteLine();
+            Console.WriteLine("JAMENDOwnloader </type:<mp3|ogg>> [/threads:2] </input:<catalog-xml-file>> </output:<directory>> [options]");
+            Console.WriteLine();
+            Console.WriteLine("there are some optional parameters available:");
+            Console.WriteLine(" /coversize:<200-600> - the desired size of cover-art");
+            Console.WriteLine(" /donotdownload       -   this will not download anything but only output a GraphQL script.");
+            Console.WriteLine(" /?                   -   displays this help text");
+            Console.WriteLine();
+            Console.WriteLine("Example:");
+            Console.WriteLine("   JAMENDOwnloader /type:mp3 /threads:4 /input:catalog.xml /output:Jamendo");
+            Console.WriteLine("This will use catalog.xml in the same folder to download mp3-formatted tracks and output it");
+            Console.WriteLine("into the ./Jamendo folder");
+        }
+
         static void Main(string[] args)
         {
             Console.WriteLine("JAMENDOwnloader 1.0");
             Console.WriteLine("Copyright (c) 2011 Daniel Kirstenpfad - http://www.technology-ninja.com");
             Console.WriteLine();
-            if (args.Length < 3)
+
+            Arguments CommandLine = new Arguments(args);
+            String CatalogFile = "";
+            String DownloadPath = "";
+            byte NumberOfThreads = 1;   // default
+            bool DoNotDownload = false;
+            String DownloadType = ".mp3";
+            String JamendoDownloadType = "mp31";
+            Int32 CoverSize = 400;
+            #region Parameter handling
+
+            #region /?
+            if (CommandLine["?"] != null)
             {
-                Console.WriteLine("You need to specify more parameters:");
-                Console.WriteLine();
-                Console.WriteLine("  JAMENDOwnloader <download-type> <numberofdownloadthreads> <catalog-xml-file> <directory>");
-                Console.WriteLine();
-                Console.WriteLine("  allowed download-types: mp3, ogg");
-                Console.WriteLine();
-                Console.WriteLine("Example:");
-                Console.WriteLine(" JAMENDOwnloader mp3 4 catalog.xml Jamendo");
+                DisplayHelpText();
+                return;           
+            }
+            #endregion
+
+            #region /input
+            if (CommandLine["input"] != null)
+                CatalogFile = CommandLine["input"];
+            else
+            {
+                Console.WriteLine("You need to define a catalog xml file using the /input: parameter.");
+                return;
+            }
+            #endregion
+
+            #region /output
+            if (CommandLine["output"] != null)
+            {
+                DownloadPath = CommandLine["output"];            
+                if (!Directory.Exists(DownloadPath))
+                {
+                    Console.WriteLine("Output directory does not exists!");
+                    return;
+                }
+            }
+            else
+            {
+                Console.WriteLine("You need to define an output folder using the /output: parameter.");
+                return;
+            }
+            #endregion
+
+            #region /threads
+            if (CommandLine["threads"] != null)
+                NumberOfThreads = Convert.ToByte(CommandLine["threads"]);
+            #endregion
+
+            #region /threads
+            if (CommandLine["threads"] != null)
+                NumberOfThreads = Convert.ToByte(CommandLine["threads"]);
+            #endregion
+
+            #region /coversize
+            if (CommandLine["coversize"] != null)
+                CoverSize = Convert.ToInt32(CommandLine["coversize"]);
+            #endregion
+
+            #region /type
+            if (CommandLine["type"] != null)
+                if (CommandLine["type"].ToUpper() == "OGG")
+                {
+                    DownloadType = ".ogg";
+                    JamendoDownloadType = "ogg2";
+                }
+            #endregion
+
+            #region /donotdownload
+            if (CommandLine["donotdownload"] != null)
+            {
+                DoNotDownload = true;
+            }
+            #endregion
+
+            #endregion
+
+            if (args.Length < 2)
+            {
+                DisplayHelpText();
                 return;
             }
 
             #region Parse the XML
             Console.Write("Parsing XML Data...");
-
-            ParallelDownloader pDownloader = new ParallelDownloader(Convert.ToByte(args[1]));
-            TextReader reader = new StreamReader(args[2]);            
+            ParallelDownloader pDownloader = new ParallelDownloader(NumberOfThreads);
+            TextReader reader = new StreamReader(CatalogFile);            
             XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
             
             Console.WriteLine("done!");
             Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
             #endregion
-
-            if (!Directory.Exists(args[3]))
-            {
-                Console.WriteLine("Output directory does not exists!");
-                return;
-            }
-
-            String DownloadPath = args[3];
-
-            String DownloadType = ".mp3";
-            String JamendoDownloadType = "mp31";
-
-            if (args[0].ToUpper() == "OGG")
-            {
-                DownloadType = ".ogg";
-                JamendoDownloadType = "ogg2";
-            }
 
             long DownloadedArtists = 0;
             long DownloadedAlbums = 0;
@@ -110,7 +182,8 @@ namespace JAMENDOwnloader
                 #region eventually create artist directory
                 if (!Directory.Exists(ArtistPath))
                 {
-                    Directory.CreateDirectory(ArtistPath);
+                    if (!DoNotDownload)
+                        Directory.CreateDirectory(ArtistPath);
                 }
                 #endregion
 
@@ -125,7 +198,8 @@ namespace JAMENDOwnloader
                     #region eventually create album directory
                     if (!Directory.Exists(AlbumPath))
                     {
-                        Directory.CreateDirectory(AlbumPath);
+                        if (!DoNotDownload)
+                            Directory.CreateDirectory(AlbumPath);
                     }
                     #endregion
 
@@ -135,19 +209,24 @@ namespace JAMENDOwnloader
                     if (!File.Exists(AlbumArtPath))
                     {
                         String AlbumArt ="";
-                        if (_album.id.Length == 3)
-                            AlbumArt = "http://imgjam.com/albums/s0/" + _album.id + "/covers/1.400.jpg";
+                        //if (_album.id.Length == 3)
+                        //    AlbumArt = "http://imgjam.com/albums/s0/" + _album.id + "/covers/1.400.jpg";
 
-                        if (_album.id.Length == 4)
-                            AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 1) + "/" + _album.id + "/covers/1.400.jpg";
+                        //if (_album.id.Length == 4)
+                        //    AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 1) + "/" + _album.id + "/covers/1.400.jpg";
 
-                        if (_album.id.Length == 5)
-                            AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 2) + "/" + _album.id + "/covers/1.400.jpg";
+                        //if (_album.id.Length == 5)
+                        //    AlbumArt = "http://imgjam.com/albums/s" + _album.id.Substring(0, 2) + "/" + _album.id + "/covers/1.400.jpg";
+
+                        AlbumArt = "http://api.jamendo.com/get2/image/album/redirect/?id="+_album.id+"&imagesize="+CoverSize;
+
                         try
                         {
                             //WebClient webClient = new WebClient();
                             //webClient.DownloadFile(AlbumArt, AlbumArtPath);
-                            pDownloader.AddToQueue(AlbumArt, AlbumArtPath);
+                            if (!DoNotDownload)
+                                pDownloader.AddToQueue(AlbumArt, AlbumArtPath);
+
                             Console.WriteLine("           \\ - Cover");
                         }
                         catch (Exception e)
@@ -185,7 +264,8 @@ namespace JAMENDOwnloader
                                 Console.WriteLine("           \\ - " + _track.name + ", " + _track.duration + ", " + _track.id3genre);
                                 //WebClient webClient = new WebClient();
                                 //webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
-                                pDownloader.AddToQueue("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
+                                if (!DoNotDownload)
+                                    pDownloader.AddToQueue("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
                             }
                             catch (Exception e)
                             {
