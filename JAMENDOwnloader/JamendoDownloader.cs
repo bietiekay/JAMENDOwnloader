@@ -145,13 +145,17 @@ namespace JAMENDOwnloader
             }
             #endregion
 
-            #endregion
-
+            #region not enough parameters
             if (args.Length < 2)
             {
                 DisplayHelpText();
                 return;
             }
+            #endregion
+
+            #endregion
+
+
 
             #region Parse the XML
             Console.Write("Parsing XML Data...");
