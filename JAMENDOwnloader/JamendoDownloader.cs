@@ -56,6 +56,7 @@ namespace JAMENDOwnloader
             Console.WriteLine("there are some optional parameters available:");
             Console.WriteLine(" /coversize:<200-600> -   the desired size of cover-art, Default: 400");
             Console.WriteLine(" /donotdownload       -   this will not download anything but only output a GraphQL script.");
+            Console.WriteLine(" /donotoutputdata     -   this will supress any album/artist/song data output.");
             Console.WriteLine(" /?                   -   displays this help text");
             Console.WriteLine();
             Console.WriteLine("Example:");
@@ -76,6 +77,7 @@ namespace JAMENDOwnloader
             String DownloadPath = "";
             byte NumberOfThreads = 1;   // default
             bool DoNotDownload = false;
+            bool DoNotOutputData = false;
             String DownloadType = ".mp3";
             String JamendoDownloadType = "mp31";
             Int32 CoverSize = 400;
@@ -148,6 +150,13 @@ namespace JAMENDOwnloader
             }
             #endregion
 
+            #region /donotoutputdata
+            if (CommandLine["donotoutputdata"] != null)
+            {
+                DoNotOutputData = true;
+            }
+            #endregion
+
             #region not enough parameters
             if (args.Length < 2)
             {
@@ -159,17 +168,22 @@ namespace JAMENDOwnloader
             #endregion
 
             #region Initialize
+            Console.Write("Parsing XML Data...");
             ParallelDownloader pDownloader = new ParallelDownloader(NumberOfThreads);
             TextReader reader = new StreamReader(CatalogFile);
             XmlSerializer serializer = new XmlSerializer(typeof(JamendoData));
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
-            TextWriter graphQLOutputFile = new StreamWriter(DownloadPath + "\\jamendo.gql", false);
 
+            List<String> Scheme = new List<string>();
+            List<String> TagsInsert = new List<string>();
+            List<String> TrackInsert = new List<string>();
+            List<String> AlbumInsert = new List<string>();
+            List<String> ArtistInsert = new List<string>();
+            List<String> ArtistAlbumEdges = new List<string>();
+            List<String> AlbumTrackEdges = new List<string>();
             #endregion
 
             #region Parse the XML
-            Console.Write("Parsing XML Data...");
-
             Console.WriteLine("done!");
             Console.WriteLine("Whoohooo - we have " + xmldata.Artists.LongLength + " Artists in the catalog.");
             #endregion
@@ -181,38 +195,59 @@ namespace JAMENDOwnloader
             #region Now iterate through all artists, albums and tracks and find out which ones should be downloaded
 
             #region GraphQL scheme
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE City ATTRIBUTES (String Name)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE State ATTRIBUTES (String Name)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Country ATTRIBUTES (String Name)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Location ATTRIBUTES (Double Longitude, Double Latitude, Country Country, State State, City City)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Genre ATTRIBUTES (String GenreName)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Album ATTRIBUTES (String Name, Int64 ID)");
-            graphQLOutputFile.WriteLine("CREATE VERTEX TYPE Artist ATTRIBUTES (String Name, Int64 ID, String URL, String ImageURL, SET<Album> Albums)");
+            Scheme.Add("CREATE VERTEX TYPE City ATTRIBUTES (String Name)");
+            Scheme.Add("CREATE VERTEX TYPE State ATTRIBUTES (String Name)");
+            Scheme.Add("CREATE VERTEX TYPE Country ATTRIBUTES (String Name)");
+            Scheme.Add("CREATE VERTEX TYPE Location ATTRIBUTES (Double Longitude, Double Latitude, Country Country, State State, City City)");
+            Scheme.Add("CREATE VERTEX TYPE Genre ATTRIBUTES (String GenreName)");
+            Scheme.Add("CREATE VERTEX TYPE Tag ATTRIBUTES (String Tagname)");
+
+            Scheme.Add("CREATE VERTEX TYPE Track ATTRIBUTES (UInt64 ID, Double Duration, String Name, String License, Int64 TrackNumber, String MusicbrainzID, Byte ID3Genre, SET<Tag> Tags) INDICES (ID)");
+            Scheme.Add("CREATE VERTEX TYPE Album ATTRIBUTES (String Name, UInt64 ID, DateTime ReleaseDate, Byte ID3Genre, String ArtworkLicense, String URL, String MusicbrainzID, SET<Track> Tracks) INDICES (ID)");
+            
+            Scheme.Add("CREATE VERTEX TYPE Artist ATTRIBUTES (String Name, UInt64 ID, String URL, String ImageURL, SET<Album> Albums) INDICES (ID)");
+            Scheme.Add("ALTER VERTEX TYPE Album ADD INCOMINGEDGES (Artist.Albums Album)");
             #endregion
 
             foreach (JamendoDataArtistsArtist _artist in xmldata.Artists)
             {
-                Console.WriteLine(" \\- " + PathValidation.CleanFileName(_artist.name));
+                if (!DoNotOutputData)
+                    Console.WriteLine(" \\- " + PathValidation.CleanFileName(_artist.name));
 
                 String ArtistPath = DownloadPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_artist.name);
 
                 #region handle artist metadata
-                String ArtistName = "";
-                String ArtistURL = "";
-                String ArtistImage = "";
+                // we need to build the artist insert statement...
+                StringBuilder artist_insert = new StringBuilder();
+                artist_insert.Append("INSERT INTO Artist VALUES(");
 
+                if (_artist.id != null)
+                {
+                    artist_insert.Append("ID=" + _artist.id + ",");
+                }
 
                 if (_artist.name != null)
-                    ArtistName = _artist.name.Replace("'", "\\'");
+                {
+                    artist_insert.Append("Name='" + _artist.name.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "") + "',");
+                }
 
                 if (_artist.url != null)
-                    ArtistURL = _artist.url.Replace("'", "\\'");
+                {
+                    artist_insert.Append("URL='" + _artist.url.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                }
 
                 if (_artist.image != null)
-                    ArtistImage = _artist.image.Replace("'", "\\'");
+                {
+                    artist_insert.Append("ImageURL='" + _artist.image.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                }
 
+                // if there's a , left-over at the end, remove it...
+                if (artist_insert[artist_insert.Length-1] == ',')
+                    artist_insert.Remove(artist_insert.Length - 1, 1);
 
-                graphQLOutputFile.WriteLine("INSERT INTO Artist VALUES(Name='" + ArtistName + "',ID=" + _artist.id + ",URL='" + ArtistURL + "', ImageURL='" + ArtistImage + "')");
+                artist_insert.Append(")");
+
+                ArtistInsert.Add(artist_insert.ToString());
 
                 #endregion
 
@@ -226,10 +261,69 @@ namespace JAMENDOwnloader
 
                 foreach (JamendoDataArtistsArtistAlbumsAlbum _album in _artist.Albums)
                 {
-                    Console.WriteLine("     \\ - " + PathValidation.CleanFileName(_album.name));
+                    if (!DoNotOutputData)
+                        Console.WriteLine("     \\ - " + PathValidation.CleanFileName(_album.name));
                     String AlbumPath = ArtistPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(_album.name);
 
                     #region handle album metadata
+                    // we need to build the album insert statement...
+                    StringBuilder album_insert = new StringBuilder();
+                    album_insert.Append("INSERT INTO Album VALUES(");
+
+                    if (_album.id != null)
+                    {
+                        album_insert.Append("ID=" + _album.id + ",");
+                    }
+
+                    if (_album.name != null)
+                    {
+                        album_insert.Append("Name='" + _album.name.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                    }
+
+                    if (_album.id3genre != null)
+                    {
+                        album_insert.Append("ID3Genre=" + _album.id3genre + ",");
+                    }
+
+                    if (_album.license_artwork != null)
+                    {
+                        album_insert.Append("ArtworkLicense='" + _album.license_artwork.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                    }
+
+                    if (_album.url != null)
+                    {
+                        album_insert.Append("URL='" + _album.url.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                    }
+
+                    if (_album.mbgid != "")
+                    {
+                        album_insert.Append("MusicbrainzID='" + _album.mbgid + "',");
+                    }
+
+                    if (_album.releasedate != null)
+                    {
+                        DateTime releasedateparsed;
+                        // check if we can parse it, so it should be easily parseable by GraphDB
+                        bool parsedSuccessfully = DateTime.TryParse(_album.releasedate, out releasedateparsed);
+
+                        // we could parse!! yay!
+                        if (parsedSuccessfully)
+                            album_insert.Append("ReleaseDate='"+_album.releasedate+"',");
+                    }
+
+                    // we are filling the tracks later in the process...
+                    
+                    // if there's a , left-over at the end, remove it...
+                    if (album_insert[album_insert.Length - 1] == ',')
+                        album_insert.Remove(album_insert.Length - 1, 1);
+
+                    album_insert.Append(")");
+
+                    AlbumInsert.Add(album_insert.ToString());
+
+                    // add the Artist->Album edge
+                    ArtistAlbumEdges.Add("LINK Artist(ID = " + _artist.id + ") VIA Albums TO Album(ID=" + _album.id + ")");
+
                     #endregion
 
                     #region eventually create album directory
@@ -264,7 +358,8 @@ namespace JAMENDOwnloader
                             if (!DoNotDownload)
                                 pDownloader.AddToQueue(AlbumArt, AlbumArtPath);
 
-                            Console.WriteLine("           \\ - Cover");
+                            if (!DoNotOutputData)
+                                Console.WriteLine("           \\ - Cover");
                         }
                         catch (Exception e)
                         {
@@ -291,6 +386,58 @@ namespace JAMENDOwnloader
                         String TrackPath = AlbumPath + Path.DirectorySeparatorChar + PathValidation.CleanFileName(TrackNumber + " - " + _track.name) + DownloadType;
 
                         #region handle track metadata
+                        // we need to build the track insert statement...
+                        StringBuilder track_insert = new StringBuilder();
+                        track_insert.Append("INSERT INTO Track VALUES(");
+
+                        if (_track.id != null)
+                        {
+                            track_insert.Append("ID=" + _track.id + ",");
+                        }
+
+                        if (_track.name != null)
+                        {
+                            track_insert.Append("Name='" + _track.name.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                        }
+
+                        if (_track.duration != null)
+                        {
+                            track_insert.Append("Duration=" + _track.duration+ ",");
+                        }
+
+                        if (_track.license != null)
+                        {
+                            track_insert.Append("License='" + _track.license.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
+                        }
+
+                        if (_track.numalbum != null)
+                        {
+                            track_insert.Append("TrackNumber=" + _track.numalbum+ ",");
+                        }
+
+                        if (_track.mbgid != null)
+                        {
+                            track_insert.Append("MusicbrainzID='" + _track.mbgid + "',");
+                        }
+
+                        if (_track.id3genre != null)
+                        {
+                            track_insert.Append("ID3Genre=" + _track.id3genre + ",");
+                        }
+
+                        // we are filling the tracks later in the process...
+
+                        // if there's a , left-over at the end, remove it...
+                        if (track_insert[track_insert.Length - 1] == ',')
+                            track_insert.Remove(track_insert.Length - 1, 1);
+
+                        track_insert.Append(")");
+
+                        TrackInsert.Add(track_insert.ToString());
+
+                        // add the Album->Track edge
+                        AlbumTrackEdges.Add("LINK Album(ID = " + _album.id + ") VIA Tracks TO Track(ID=" + _track.id + ")");
+
                         #endregion
 
                         #region Download if not existing
@@ -298,7 +445,8 @@ namespace JAMENDOwnloader
                         {
                             try
                             {
-                                Console.WriteLine("           \\ - " + PathValidation.CleanFileName(_track.name) + ", " + _track.duration + ", " + _track.id3genre);
+                                if (!DoNotOutputData)
+                                    Console.WriteLine("           \\ - " + PathValidation.CleanFileName(_track.name) + ", " + _track.duration + ", " + _track.id3genre);
                                 //WebClient webClient = new WebClient();
                                 //webClient.DownloadFile("http://api.jamendo.com/get2/stream/track/redirect/?id=" + _track.id + "&streamencoding=" + JamendoDownloadType, TrackPath);
                                 if (!DoNotDownload)
@@ -319,9 +467,56 @@ namespace JAMENDOwnloader
                 DownloadedArtists++;
             }
             #endregion
+            
+            // Write the GraphQL file..
+            Console.Write("Writing GraphQL file...");
+            TextWriter graphQLOutputFile = new StreamWriter(DownloadPath + "\\jamendo.gql", false);
+
+            Console.Write("Scheme, ");
+            // first the scheme
+            foreach (String _graphqlline in Scheme)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
+            
+            Console.Write("Tags, ");
+            // second the tags
+            foreach (String _graphqlline in TagsInsert)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
+
+            Console.Write("Songs, ");
+            // third the songs
+            foreach (String _graphqlline in TrackInsert)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
+
+            Console.Write("Albums, ");
+            // fourth the albums
+            foreach (String _graphqlline in AlbumInsert)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
+
+            Console.Write("Artists");
+            // fifth the artists
+            foreach (String _graphqlline in ArtistInsert)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
+
+            Console.Write("Artists");
+            // sixth the Artist->Album edges
+            foreach (String _graphqlline in ArtistAlbumEdges)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
 
             graphQLOutputFile.Flush();
             graphQLOutputFile.Close();
+            Console.WriteLine(" - done.");
         }
     }
 }
