@@ -500,19 +500,27 @@ namespace JAMENDOwnloader
                 graphQLOutputFile.WriteLine(_graphqlline);
             }
 
-            Console.Write("Artists");
+            Console.Write("Artists,");
             // fifth the artists
             foreach (String _graphqlline in ArtistInsert)
             {
                 graphQLOutputFile.WriteLine(_graphqlline);
             }
 
-            Console.Write("Artists");
+            Console.Write(" Artist->Album,");
             // sixth the Artist->Album edges
             foreach (String _graphqlline in ArtistAlbumEdges)
             {
                 graphQLOutputFile.WriteLine(_graphqlline);
             }
+
+            Console.Write(" Album->Tracks,");
+            // sixth the Album->Tracks edges
+            foreach (String _graphqlline in AlbumTrackEdges)
+            {
+                graphQLOutputFile.WriteLine(_graphqlline);
+            }
+
 
             graphQLOutputFile.Flush();
             graphQLOutputFile.Close();
