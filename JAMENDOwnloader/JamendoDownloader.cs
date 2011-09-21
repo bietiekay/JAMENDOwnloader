@@ -41,6 +41,7 @@ using System.IO;
 using JAMENDOwnloader.XML;
 using System.Net;
 using CommandLine.Utility;
+using System.Threading;
 
 namespace JAMENDOwnloader
 {
@@ -175,6 +176,7 @@ namespace JAMENDOwnloader
             JamendoData xmldata = (JamendoData)serializer.Deserialize(reader);
 
             List<String> Scheme = new List<string>();
+            List<String> ID3Inserts = new List<string>();
             List<String> TagsInsert = new List<string>();
             List<String> TrackInsert = new List<string>();
             List<String> AlbumInsert = new List<string>();
@@ -199,14 +201,22 @@ namespace JAMENDOwnloader
             Scheme.Add("CREATE VERTEX TYPE State ATTRIBUTES (String Name)");
             Scheme.Add("CREATE VERTEX TYPE Country ATTRIBUTES (String Name)");
             Scheme.Add("CREATE VERTEX TYPE Location ATTRIBUTES (Double Longitude, Double Latitude, Country Country, State State, City City)");
-            Scheme.Add("CREATE VERTEX TYPE Genre ATTRIBUTES (String GenreName)");
+            Scheme.Add("CREATE VERTEX TYPE ID3Genre ATTRIBUTES (Byte ID, String Name)");
+          
             Scheme.Add("CREATE VERTEX TYPE Tag ATTRIBUTES (String Tagname)");
-
-            Scheme.Add("CREATE VERTEX TYPE Track ATTRIBUTES (UInt64 ID, Double Duration, String Name, String License, Int64 TrackNumber, String MusicbrainzID, Byte ID3Genre, SET<Tag> Tags) INDICES (ID)");
+            Scheme.Add("CREATE VERTEX TYPE Track ATTRIBUTES (UInt64 ID, Double Duration, String Name, String License, Int64 TrackNumber, String MusicbrainzID, ID3Genre ID3Genre, SET<Tag> Tags) INDICES (ID)");
             Scheme.Add("CREATE VERTEX TYPE Album ATTRIBUTES (String Name, UInt64 ID, DateTime ReleaseDate, Byte ID3Genre, String ArtworkLicense, String URL, String MusicbrainzID, SET<Track> Tracks) INDICES (ID)");
             
             Scheme.Add("CREATE VERTEX TYPE Artist ATTRIBUTES (String Name, UInt64 ID, String URL, String ImageURL, SET<Album> Albums) INDICES (ID)");
             Scheme.Add("ALTER VERTEX TYPE Album ADD INCOMINGEDGES (Artist.Albums Album)");
+
+            ID3Genre id3genre_ = new ID3Genre();
+            foreach (Byte _id3id in id3genre_.ID3.Keys)
+            {
+                ID3Inserts.Add("INSERT INTO ID3Genre VALUES(ID=" + _id3id + ",Name='" + id3genre_.ID3[_id3id] + "'");
+            }
+
+
             #endregion
 
             foreach (JamendoDataArtistsArtist _artist in xmldata.Artists)
@@ -417,13 +427,25 @@ namespace JAMENDOwnloader
 
                         if (_track.mbgid != null)
                         {
-                            track_insert.Append("MusicbrainzID='" + _track.mbgid + "',");
+                            if (_track.mbgid != "")
+                                track_insert.Append("MusicbrainzID='" + _track.mbgid + "',");
                         }
 
                         if (_track.id3genre != null)
                         {
-                            track_insert.Append("ID3Genre=" + _track.id3genre + ",");
+                            if (id3genre_.ID3.ContainsKey(Convert.ToByte(_track.id3genre)))
+                            {
+                                track_insert.Append("ID3Genre=REF(ID=" + _track.id3genre + "),");
+                            }
+                            
                         }
+
+                        if (_track.Tags != null)
+                        {
+                            //track_insert.Append("ID3Genre=" + _track.id3genre + ",");
+                            Thread.Sleep(1);
+                        }
+
 
                         // we are filling the tracks later in the process...
 
@@ -470,61 +492,105 @@ namespace JAMENDOwnloader
             
             // Write the GraphQL file..
             Console.Write("Writing GraphQL file...");
-            TextWriter graphQLOutputFile = new StreamWriter(DownloadPath + "\\jamendo.gql", false);
+            TextWriter scheme_file = new StreamWriter(DownloadPath + "\\jamendo_scheme.gql", false);
+            TextWriter insert_file = new StreamWriter(DownloadPath + "\\jamendo_insert.gql", false);
+            TextWriter link_file = new StreamWriter(DownloadPath + "\\jamendo_link.gql", false);
+
+            long StatementCounter = 0;
+            long Counter = 0;
 
             Console.Write("Scheme, ");
             // first the scheme
+            Counter = 0;
             foreach (String _graphqlline in Scheme)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                scheme_file.WriteLine(_graphqlline);
             }
-            
+            Console.Write("(" + Counter + ")");
+
+            Console.Write("ID3Genre, ");
+            Counter = 0;
+            foreach (String _graphqlline in ID3Inserts)
+            {
+                StatementCounter++;
+                Counter++;
+                scheme_file.WriteLine(_graphqlline);
+            }
+            Console.Write("(" + Counter + ")");
+
+
             Console.Write("Tags, ");
-            // second the tags
+            Counter = 0;
             foreach (String _graphqlline in TagsInsert)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                insert_file.WriteLine(_graphqlline);
             }
+            Console.Write("(" + Counter + ")");
 
             Console.Write("Songs, ");
-            // third the songs
+            Counter = 0;            
             foreach (String _graphqlline in TrackInsert)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                insert_file.WriteLine(_graphqlline);
             }
+            Console.Write("(" + Counter + ")");
 
             Console.Write("Albums, ");
-            // fourth the albums
+            Counter = 0; 
             foreach (String _graphqlline in AlbumInsert)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                insert_file.WriteLine(_graphqlline);
             }
+            Console.Write("(" + Counter + ")");
 
             Console.Write("Artists,");
-            // fifth the artists
+            Counter = 0;
             foreach (String _graphqlline in ArtistInsert)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                insert_file.WriteLine(_graphqlline);
             }
+            Console.Write("(" + Counter + ")");
 
             Console.Write(" Artist->Album,");
-            // sixth the Artist->Album edges
+            Counter = 0; 
             foreach (String _graphqlline in ArtistAlbumEdges)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                link_file.WriteLine(_graphqlline);
             }
+            Console.Write("(" + Counter + ")");
 
             Console.Write(" Album->Tracks,");
-            // sixth the Album->Tracks edges
+            Counter = 0;
             foreach (String _graphqlline in AlbumTrackEdges)
             {
-                graphQLOutputFile.WriteLine(_graphqlline);
+                StatementCounter++;
+                Counter++;
+                link_file.WriteLine(_graphqlline);
             }
+            Console.Write("(" + Counter + ")");
 
-
-            graphQLOutputFile.Flush();
-            graphQLOutputFile.Close();
+            scheme_file.Flush();
+            insert_file.Flush();
+            link_file.Flush();
+            scheme_file.Close();
+            insert_file.Close();
+            link_file.Close();
             Console.WriteLine(" - done.");
+            Console.WriteLine("All statements: " + StatementCounter);
+
+            Console.ReadLine();
         }
     }
 }

@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Arguments\Arguments.cs" />
+    <Compile Include="ID3Genre.cs" />
     <Compile Include="JamendoDownloader.cs" />
     <Compile Include="ParallelDownloader.cs" />
     <Compile Include="PathFilenameHelper.cs" />
