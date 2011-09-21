@@ -213,7 +213,7 @@ namespace JAMENDOwnloader
             ID3Genre id3genre_ = new ID3Genre();
             foreach (Byte _id3id in id3genre_.ID3.Keys)
             {
-                ID3Inserts.Add("INSERT INTO ID3Genre VALUES(ID=" + _id3id + ",Name='" + id3genre_.ID3[_id3id] + "'");
+                ID3Inserts.Add("INSERT INTO ID3Genre VALUES(ID=" + _id3id + ",Name='" + id3genre_.ID3[_id3id] + "')");
             }
 
 
@@ -305,9 +305,10 @@ namespace JAMENDOwnloader
                         album_insert.Append("URL='" + _album.url.Replace("\\","\\\\").Replace("'", "\\'").Replace("\n","") + "',");
                     }
 
-                    if (_album.mbgid != "")
+                    if (_album.mbgid != null)
                     {
-                        album_insert.Append("MusicbrainzID='" + _album.mbgid + "',");
+                        if (_album.mbgid != "")
+                            album_insert.Append("MusicbrainzID='" + _album.mbgid + "',");
                     }
 
                     if (_album.releasedate != null)
@@ -443,7 +444,7 @@ namespace JAMENDOwnloader
                         if (_track.Tags != null)
                         {
                             //track_insert.Append("ID3Genre=" + _track.id3genre + ",");
-                            Thread.Sleep(1);
+                            //Thread.Sleep(1);
                         }
 
 
