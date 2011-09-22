@@ -36,11 +36,13 @@ namespace JAMENDOwnloader
             {
                 Console.WriteLine("Error: "+URL+" -> "+Filename);
                 Console.WriteLine(e.Message);
+                CurrentConcurrentDownloads--;
             }
         }
 
         private void Completed(object sender, AsyncCompletedEventArgs e)
         {
+
             CurrentConcurrentDownloads--;
         }
     }
